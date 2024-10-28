@@ -312,22 +312,6 @@ M.get_plugin_path = function(paths)
   return M.get_plugin_root_dir() .. M.ps .. table.concat(paths, M.ps)
 end
 
----Check if a string is a blob
----@param s string
----@return boolean
-M.is_blob = function(s)
-  -- Loop through each character in the string
-  for i = 1, #s do
-    local byte = s:byte(i)
-    -- Check if the byte is outside the printable ASCII range (32-126)
-    -- Allow tab (9), newline (10), and carriage return (13) as exceptions
-    if (byte < 32 or byte > 126) and byte ~= 9 and byte ~= 10 and byte ~= 13 then
-      return true -- If any non-printable character is found, it's likely a blob
-    end
-  end
-  return false -- If no non-printable characters are found, it's not a blob
-end
-
 ---Read a file
 ---@param filename string
 ---@param is_binary boolean|nil

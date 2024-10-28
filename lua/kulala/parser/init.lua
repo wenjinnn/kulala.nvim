@@ -22,7 +22,7 @@ M.scripts.javascript = require("kulala.parser.scripts.javascript")
 ---@param env table -- The environment variables
 ---@param silent boolean|nil -- Whether to suppress not found variable warnings
 ---@param skip_blobs boolean|nil -- Whether to skip blobs, but still replace them with a placeholder
-local function parse_string_variables(str, variables, env, silent, skip_blobs)
+local function parse_string_variables(str, variables, env, silent)
   local function replace_placeholder(variable_name)
     local value
     -- If the variable name contains a `$` symbol then try to parse it as a dynamic variable
@@ -32,15 +32,7 @@ local function parse_string_variables(str, variables, env, silent, skip_blobs)
         value = variable_value
       end
     elseif variables[variable_name] then
-      if FS.is_blob(variables[variable_name]) then
-        if skip_blobs then
-          value = "[[binary file skipped]]"
-        else
-          value = variables[variable_name]
-        end
-      else
-        value = parse_string_variables(variables[variable_name], variables, env)
-      end
+      value = parse_string_variables(variables[variable_name], variables, env)
     elseif env[variable_name] then
       value = env[variable_name]
     elseif REQUEST_VARIABLES.parse(variable_name) then
@@ -137,7 +129,7 @@ local function parse_body_display(body_display, variables, env, silent)
   end
   variables = variables or {}
   env = env or {}
-  return parse_string_variables(body_display, variables, env, silent, true)
+  return parse_string_variables(body_display, variables, env, silent)
 end
 
 local function split_by_block_delimiters(text)
@@ -338,20 +330,14 @@ M.get_document = function()
         -- Skip the line if it is a binary file, but add a placeholder
         -- binary files should be skipped and used in a --data-binary @file notation
         -- which is handled by the curl command and not sent as part of the request body string
-        if FS.is_blob(line) then
-          request.body = request.body .. "[[binary file skipped]]\r\n"
-          request.body_display = request.body_display .. "[[binary file skipped]]\r\n"
-        elseif line:find("^<") then
+        if line:find("^<") then
           if content_type_header_value ~= nil and content_type_header_value:find("^multipart/form%-data") then
             request.body = request.body .. line .. "\r\n"
             request.body_display = request.body_display .. line .. "\r\n"
           else
             local file_path = vim.trim(line:sub(2))
             local contents = FS.read_file(file_path)
-            if contents ~= nil and FS.is_blob(contents) then
-              request.body = request.body .. "[[binary file skipped]]\r\n"
-              request.body_display = request.body_display .. "[[binary file skipped]]\r\n"
-            elseif contents ~= nil then
+            if contents ~= nil then
               request.body = request.body .. contents .. "\r\n"
               request.body_display = request.body_display .. contents .. "\r\n"
             else
